@@ -1,5 +1,4 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { cleanupTrackMessages } = require('../../player.js');
 const { checkVoiceChannel } = require('../../utils/voiceChannelCheck.js');
 const { checkCurrentTrack } = require('../../utils/playerValidation.js');
 const { sendErrorResponse, sendSuccessResponse, handleCommandError, safeDeferReply } = require('../../utils/responseHandler.js');
@@ -83,8 +82,6 @@ module.exports = {
             const currentVotes = voteData.voters.size;
 
             if (currentVotes >= requiredVotes) {
-                await cleanupTrackMessages(client, player);
-                
                 player.stop();
                 voteSkipMap.delete(interaction.guildId);
 

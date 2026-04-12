@@ -6,6 +6,17 @@ const { checkVoiceChannel: checkVC } = require('../../utils/voiceChannelCheck.js
 const { getLavalinkManager } = require('../../lavalink.js');
 const { getLang } = require('../../utils/languageLoader.js');
 
+async function waitForPlayerConnection(player, timeoutMs = 7000) {
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < timeoutMs) {
+        if (player?.connected) {
+            return true;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 150));
+    }
+    return false;
+}
+
 const data = new SlashCommandBuilder()
   .setName("playcustomplaylist")
   .setDescription("Play a custom playlist")
@@ -189,13 +200,14 @@ module.exports = {
                 }
             }
 
-            let connectionAttempts = 0;
-            while (!player.connected && connectionAttempts < 20) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-                connectionAttempts++;
+            const connected = await waitForPlayerConnection(player);
+            if (!connected) {
+                throw new Error('Voice connection was not established. The bot did not join the voice channel.');
             }
 
-            if (!player.playing && !player.paused) player.play();
+            if (!player.playing && !player.paused) {
+                player.play();
+            }
 
             const successCard = buildPaleCard(
                 `${getEmoji('playlist')} ${sanitizeTitle(lang.playlist.playcustomplaylist.success.title, 'Playlist Added')}`,

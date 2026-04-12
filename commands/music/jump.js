@@ -1,5 +1,4 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { cleanupTrackMessages } = require('../../player.js');
 const { checkVoiceChannel } = require('../../utils/voiceChannelCheck.js');
 const { checkQueue } = require('../../utils/playerValidation.js');
 const { sendErrorResponse, sendSuccessResponse, handleCommandError, safeDeferReply } = require('../../utils/responseHandler.js');
@@ -65,8 +64,6 @@ module.exports = {
 
             const track = player.queue[position - 1];
             player.queue.remove(0, position - 1);
-            
-            await cleanupTrackMessages(client, player);
             
             player.stop();
 

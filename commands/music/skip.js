@@ -1,5 +1,4 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { cleanupTrackMessages } = require('../../player.js');
 const { checkVoiceChannel } = require('../../utils/voiceChannelCheck.js');
 const { sendSuccessResponse, handleCommandError, safeDeferReply } = require('../../utils/responseHandler.js');
 const { getLang } = require('../../utils/languageLoader');
@@ -29,8 +28,6 @@ module.exports = {
                 return reply;
             }
 
-            await cleanupTrackMessages(client, player);
-            
             player.stop();
 
             return await sendSuccessResponse(

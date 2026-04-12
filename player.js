@@ -213,6 +213,14 @@ function clearTrackMediaCache(guildId) {
     guildTrackMediaCache.delete(guildId);
 }
 
+function clearProgressUpdates(guildId) {
+    const intervalId = progressUpdateIntervals.get(guildId);
+    if (intervalId) {
+        clearInterval(intervalId);
+        progressUpdateIntervals.delete(guildId);
+    }
+}
+
 function buildNowPlayingContainer(track, requesterName, t, progressBar, progressPercent, mediaUrl, actionRows = {}, playerState = {}) {
     const musicIcon = getEmoji('music') || '🎵';
     const titleIcon = getEmoji('music') || '🎧';
@@ -617,7 +625,8 @@ async function initializePlayer(client) {
             nowPlayingMessages.set(guildId, {
                 messageId: message.id,
                 channelId: channel.id,
-                player: player
+                player: player,
+                trackUri: track.info.uri
             });
 
             const intervalId = startProgressUpdates(client, guildId, message, player, track);
@@ -652,13 +661,7 @@ async function initializePlayer(client) {
             await client.statusManager.onTrackEnd(guildId).catch(() => {});
         }
         
-        const intervalId = progressUpdateIntervals.get(guildId);
-        if (intervalId) {
-            clearInterval(intervalId);
-            progressUpdateIntervals.delete(guildId);
-        }
-        nowPlayingMessages.delete(guildId);
-        
+        clearProgressUpdates(guildId);
         const channel = client.channels.cache.get(player.textChannel);
         if (channel) {
             const settings = await autoplayCollection.findOne({ guildId }).catch(() => null);
@@ -667,7 +670,7 @@ async function initializePlayer(client) {
             if (!hasNextTrack) {
                 await cleanupTrackMessages(client, player);
             } else {
-                await cleanupPreviousTrackMessages(channel, guildId);
+                clearTrackMediaCache(guildId);
             }
         }
     });
@@ -680,12 +683,7 @@ async function initializePlayer(client) {
             await client.statusManager.onPlayerDisconnect(guildId).catch(() => {});
         }
         
-        const intervalId = progressUpdateIntervals.get(guildId);
-        if (intervalId) {
-            clearInterval(intervalId);
-            progressUpdateIntervals.delete(guildId);
-        }
-        nowPlayingMessages.delete(guildId);
+        clearProgressUpdates(guildId);
         await cleanupTrackMessages(client, player);
     });
 
@@ -705,7 +703,6 @@ async function initializePlayer(client) {
 
                 if (!nextTrack) {
                     await cleanupTrackMessages(client, player);
-                    nowPlayingMessages.delete(guildId);
                     const lang = await getLang(guildId).catch(() => ({ console: { player: {} } }));
                     const t = lang.console?.player || {};
                     if (!is24_7) {
@@ -717,7 +714,6 @@ async function initializePlayer(client) {
                 }
             } else {
                 await cleanupTrackMessages(client, player);
-                nowPlayingMessages.delete(guildId);
                 const lang = await getLang(guildId).catch(() => ({ player: {}, console: {} }));
                 const t = lang.console?.player || {};
                 const langSync = getLangSync();
@@ -733,7 +729,6 @@ async function initializePlayer(client) {
             const langSync = getLangSync();
             console.error(langSync.console?.player?.errorQueueEnd || "Error handling queue end:", error);
             await cleanupTrackMessages(client, player);
-            nowPlayingMessages.delete(guildId);
             const settings = await autoplayCollection.findOne({ guildId });
             const lang = await getLang(guildId).catch(() => ({ console: { player: {} } }));
             const t = lang.console?.player || {};
@@ -769,12 +764,7 @@ async function cleanupPreviousTrackMessages(channel, guildId) {
 async function cleanupTrackMessages(client, player) {
     const guildId = player.guildId;
     clearTrackMediaCache(guildId);
-    
-    const intervalId = progressUpdateIntervals.get(guildId);
-    if (intervalId) {
-        clearInterval(intervalId);
-        progressUpdateIntervals.delete(guildId);
-    }
+    clearProgressUpdates(guildId);
     
     const messages = guildTrackMessages.get(guildId) || [];
     
@@ -966,13 +956,7 @@ async function handleInteraction(client, i, player, channel) {
             break;
         case 'skipTrack':
             const guildId = player.guildId;
-            const intervalId = progressUpdateIntervals.get(guildId);
-            if (intervalId) {
-                clearInterval(intervalId);
-                progressUpdateIntervals.delete(guildId);
-            }
-            await cleanupTrackMessages(client, player);
-            nowPlayingMessages.delete(guildId);
+            clearProgressUpdates(guildId);
             player.stop();
             await sendEmbed(channel, t.controls?.skip || "⏭️ **Skipping to next song...**");
             break;
@@ -987,9 +971,7 @@ async function handleInteraction(client, i, player, channel) {
             await sendEmbed(channel, t.controls?.queueCleared || "🗑️ **Queue has been cleared!**");
             break;
         case 'stopTrack':
-            const stopGuildId = player.guildId;
             await cleanupTrackMessages(client, player);
-            nowPlayingMessages.delete(stopGuildId);
             player.stop();
             player.destroy();
             await sendEmbed(channel, t.controls?.playbackStopped || '⏹️ **Playback has been stopped and player destroyed!**');
@@ -1567,6 +1549,9 @@ async function startProgressUpdates(client, guildId, message, player, track) {
         return null;
     }
 
+    const boundMessageId = message.id;
+    const boundChannelId = message.channelId;
+    const boundTrackUri = track.info.uri;
     let updateCount = 0;
     const updateInterval = setInterval(async () => {
         try {
@@ -1574,27 +1559,19 @@ async function startProgressUpdates(client, guildId, message, player, track) {
             if (!currentPlayer || currentPlayer !== player) {
                 clearInterval(updateInterval);
                 progressUpdateIntervals.delete(guildId);
-                nowPlayingMessages.delete(guildId);
                 return;
             }
             
             const stored = nowPlayingMessages.get(guildId);
-            if (!stored || !player || !player.current || player.current.info.uri !== track.info.uri) {
+            if (!stored || stored.messageId !== boundMessageId || stored.channelId !== boundChannelId) {
                 clearInterval(updateInterval);
                 progressUpdateIntervals.delete(guildId);
-                nowPlayingMessages.delete(guildId);
-                if (stored && stored.messageId && stored.channelId) {
-                    try {
-                        const channel = client.channels.cache.get(stored.channelId);
-                        if (channel) {
-                            const msg = await channel.messages.fetch(stored.messageId).catch(() => null);
-                            if (msg) {
-                                await msg.delete().catch(() => {});
-                            }
-                        }
-                    } catch (error) {
-                    }
-                }
+                return;
+            }
+
+            if (!player || !player.current || player.current.info.uri !== boundTrackUri) {
+                clearInterval(updateInterval);
+                progressUpdateIntervals.delete(guildId);
                 return;
             }
 
@@ -1696,7 +1673,6 @@ async function startProgressUpdates(client, guildId, message, player, track) {
         } catch (error) {
             clearInterval(updateInterval);
             progressUpdateIntervals.delete(guildId);
-            nowPlayingMessages.delete(guildId);
         }
     }, 15000); // 5000ms to 15000ms (15 seconds) to reduce CPU/memory usage
     

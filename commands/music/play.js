@@ -23,6 +23,17 @@ const spotifyApi = new SpotifyWebApi({
     clientSecret: config.spotifyClientSecret,
 });
 
+async function waitForPlayerConnection(player, timeoutMs = 7000) {
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < timeoutMs) {
+        if (player?.connected) {
+            return true;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 150));
+    }
+    return false;
+}
+
 async function getSpotifyPlaylistTracks(playlistId) {
     try {
         const data = await spotifyApi.clientCredentialsGrant();
@@ -257,13 +268,14 @@ module.exports = {
                 console.warn(`Playlist truncated: ${tracksToQueue.length} tracks requested, only ${maxTracks} queued`);
             }
 
-            let connectionAttempts = 0;
-            while (!player.connected && connectionAttempts < 20) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-                connectionAttempts++;
+            const connected = await waitForPlayerConnection(player);
+            if (!connected) {
+                throw new Error('Voice connection was not established. The bot did not join the voice channel.');
             }
 
-            if (!player.playing && !player.paused) player.play();
+            if (!player.playing && !player.paused) {
+                player.play();
+            }
 
             const successTitle = isPlaylist ? t.success.titlePlaylist : t.success.titleTrack;
             const titleIcon = isPlaylist ? (getEmoji('playlist') || '📚') : (getEmoji('music') || '🎵');
