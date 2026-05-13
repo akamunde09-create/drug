@@ -83,7 +83,7 @@ client.on("clientReady", () => {
     const nodeManager = getLavalinkManager();
     if (nodeManager) {
         nodeManager.init(client.user.id);
-        imeout(() => {
+        settimeout(() => {
             const status = nodeManager.getNodeStatus();
             const availableCount = nodeManager.getNodeCount();
             const totalCount = nodeManager.getTotalNodeCount();
