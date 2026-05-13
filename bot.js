@@ -73,12 +73,17 @@ client.on("clientReady", () => {
     const lang = getLangSync();
     console.log(`${colors.cyan}[ SYSTEM ]${colors.reset} ${colors.green}${lang.console?.bot?.clientLogged?.replace('{tag}', client.user.tag) || `Client logged as ${client.user.tag}`}${colors.reset}`);
     console.log(`${colors.cyan}[ MUSIC ]${colors.reset} ${colors.green}${lang.console?.bot?.musicSystemReady || 'Riffy Music System Ready 🎵'}${colors.reset}`);
-   
+   client.user.setPresence({
+        activities: [{
+            name: "/play music",
+            type: 2
+        }],
+        status: "online"
+    });
     const nodeManager = getLavalinkManager();
     if (nodeManager) {
         nodeManager.init(client.user.id);
-        
-        setTimeout(() => {
+        imeout(() => {
             const status = nodeManager.getNodeStatus();
             const availableCount = nodeManager.getNodeCount();
             const totalCount = nodeManager.getTotalNodeCount();
