@@ -24,12 +24,13 @@ module.exports = {
   lowMemoryMode: true,   // Performance optimizations for low-memory environments (512MB RAM)
   errorLog: "", 
   nodes: [
-      {
-      name: "GlaceYT",
-      password: "glace",
-      host: "de-01.strixnodes.com",
-      port: 2010,
-      secure: false
-    }
+ {
+   host: "lava-v4.ajieblogs.eu.org",
+   port: 443,
+   password: "https://dsc.gg/ajidevserver",
+   secure: true,
+   name: "Main"
+ }
+]
   ]
 }
