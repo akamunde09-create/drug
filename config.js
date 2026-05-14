@@ -24,12 +24,11 @@ module.exports = {
   lowMemoryMode: true,   // Performance optimizations for low-memory environments (512MB RAM)
   errorLog: "", 
   nodes: [
- {
-   host: "lava-v4.ajieblogs.eu.org",
-   port: 443,
-   password: "ajjdev",
-   secure: true,
-   name: "Main"
- }
+  {
+    host: "lavalinkv3-internal-dc2.rythm.fm",
+    port: 443,
+    password: "youshallnotpass",
+    secure: true,
+    name: "Main"
+  }
 ]
-}
