@@ -25,9 +25,9 @@ module.exports = {
   errorLog: "", 
   nodes: [
   {
-    host: "lavalinkv3-internal-dc2.rythm.fm",
+    host: "lavalink.oops.wtf",
     port: 443,
-    password: "youshallnotpass",
+    password: "discord.gg/ajie",
     secure: true,
     name: "Main"
   }
